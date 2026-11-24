@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>链表交互实验室 · 单链表</title>
+<style>
+  :root{
+    --bg:#eaeef7;
+    --paper:#ffffff;
+    --ink:#0d1526;
+    --muted:#66738a;
+    --line:#d9e0ee;
+    --indigo:#4b46e0;
+    --indigo-soft:#eef0ff;
+    --cyan:#0e7490;
+    --amber:#b45309;
+    --rose:#be123c;
+    --green:#047857;
+    --shadow:0 1px 2px rgba(13,21,38,.05), 0 14px 34px rgba(13,21,38,.08);
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 1px 1px, #c9d3e5 1px, transparent 0) 0 0/22px 22px,
+      linear-gradient(180deg,#f7f9fd 0%,#e8edf7 100%);
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+
+  /* ---------- 顶部 ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:16px 24px 14px;
+    border-bottom:1px solid rgba(13,21,38,.08);
+    background:rgba(255,255,255,.72);
+    backdrop-filter:blur(12px);
+    position:sticky;top:0;z-index:30;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand h1{font-size:19px;margin:0;letter-spacing:.2px;font-weight:800}
+  .brand .sub{font-size:12px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+  .brand .deco{
+    font-size:11px;padding:3px 8px;border-radius:6px;background:var(--indigo-soft);
+    color:var(--indigo);font-weight:700;letter-spacing:.04em;
+  }
+  .spacer{flex:1}
+  .seg{display:flex;background:#e7ecf7;border-radius:11px;padding:3px;gap:2px}
+  .seg button{
+    border:0;background:transparent;font:inherit;font-size:13.5px;font-weight:600;
+    color:#5a6883;padding:7px 16px;border-radius:8px;cursor:pointer;transition:.18s;
+  }
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(13,21,38,.13)}
+  .viewsw{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+  .switch{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+  .switch button{border:0;background:#fff;font:inherit;font-size:12.5px;padding:6px 12px;cursor:pointer;color:#5a6883}
+  .switch button.on{background:var(--ink);color:#fff}
+
+  /* ---------- 布局 ---------- */
+  .app{
+    display:grid;grid-template-columns:minmax(0,1fr) 392px;
+    gap:18px;padding:18px 24px 40px;align-items:start;
+    max-width:1560px;margin:0 auto;
+  }
+  .card{background:var(--paper);border:1px solid rgba(13,21,38,.07);border-radius:18px;box-shadow:var(--shadow)}
+  .stage{padding:16px 18px 12px;position:relative;overflow:hidden}
+  .stage-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:2px 4px 10px}
+  .stage-title{font-size:13px;font-weight:700;color:#455169;letter-spacing:.02em}
+  .stage-title span{color:var(--muted);font-weight:500;margin-left:6px;font-size:12px}
+  .metrics{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .metric{
+    display:flex;align-items:baseline;gap:6px;background:#f3f6fc;border:1px solid #e3e9f5;
+    border-radius:9px;padding:5px 11px;font-size:12px;color:var(--muted)
+  }
+  .metric b{font-size:15px;color:var(--ink);font-weight:800}
+  .metric.hot{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+  .metric.hot b{color:#9a3412}
+
+  /* ---------- 画布 ---------- */
+  .board-wrap{position:relative;border-radius:14px;background:
+      linear-gradient(180deg,#fbfcff,#f5f7fc);
+    border:1px solid #e6ebf6;overflow-x:auto;overflow-y:hidden}
+  .board{position:relative;height:282px;min-width:100%;transition:width .2s}
+  #edges{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:1}
+  .node{
+    position:absolute;left:0;top:0;width:152px;height:78px;
+    display:flex;align-items:stretch;
+    background:#fff;border:2px solid #d7dfee;border-radius:13px;
+    box-shadow:0 3px 10px rgba(13,21,38,.07);
+    cursor:pointer;z-index:3;will-change:transform,opacity;
+    transition:border-color .18s, box-shadow .18s;
+  }
+  .node:hover{border-color:#b9c4dd;box-shadow:0 6px 18px rgba(13,21,38,.11)}
+  .node.sel{border-color:var(--indigo);box-shadow:0 0 0 4px rgba(75,70,224,.14),0 6px 18px rgba(75,70,224,.14)}
+  .node.pulse{animation:ring .38s ease}
+  .node.found{border-color:#10b981;box-shadow:0 0 0 4px rgba(16,185,129,.18)}
+  .node.miss{border-color:#f43f5e;box-shadow:0 0 0 4px rgba(244,63,94,.16);animation:shake .3s}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(75,70,224,.36)}100%{box-shadow:0 0 0 12px rgba(75,70,224,0)}}
+  @keyframes shake{0%,100%{transform-origin:center}25%{margin-left:-3px}75%{margin-left:3px}}
+  .node-data{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 10px 0 15px;gap:3px}
+  .node-code{font-size:22px;font-weight:800;line-height:1.1;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .node-meta{font-size:10.5px;color:#93a0b8;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+  .node-meta.pill{
+    display:inline-block;align-self:flex-start;text-transform:none;letter-spacing:0;
+    padding:1px 6px;border-radius:5px;font-size:10px;background:#f1f5fb;color:#5a6883
+  }
+  .node-meta.pill.ok{background:#e8f8f1;color:#047857}
+  .node-meta.pill.pause{background:#fff4e6;color:#b45309}
+  .node-meta.pill.done{background:#eef1f8;color:#4a5568}
+  .node-port{
+    width:30px;display:flex;align-items:center;justify-content:center;
+    border-left:2px dashed #e2e8f3;position:relative
+  }
+  .node-port::after{
+    content:"";width:11px;height:11px;border-radius:50%;
+    background:#fff;border:2.5px solid #9eabc4
+  }
+  .node.sel .node-port::after{border-color:var(--indigo)}
+  .node-ghost{pointer-events:none}
+
+  .none-badge{
+    position:absolute;left:0;top:0;width:76px;height:44px;z-index:2;
+    display:flex;align-items:center;justify-content:center;
+    border:2px dashed #c3cddf;border-radius:10px;color:#8b99b2;
+    font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:15px;font-weight:700;
+    background:repeating-linear-gradient(45deg,#fbfcff,#fbfcff 6px,#f3f6fc 6px,#f3f6fc 12px)
+  }
+  .empty-hint{
+    position:absolute;left:0;top:0;width:100%;height:100%;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    color:#93a0b8;pointer-events:none;z-index:0
+  }
+  .empty-hint b{font-size:15px;color:#64748b}
+  .empty-hint code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13px;background:#eef2fa;padding:3px 9px;border-radius:6px;color:#5a6883}
+  .scroll-hint{
+    position:absolute;top:10px;right:12px;z-index:6;pointer-events:none;
+    font-size:11px;color:#7c89a1;background:rgba(255,255,255,.92);
+    border:1px solid #e6ebf6;border-radius:7px;padding:3px 8px;
+    opacity:0;transition:opacity .2s;box-shadow:0 1px 3px rgba(13,21,38,.05)
+  }
+
+  /* 指针标签 */
+  .chip{
+    position:absolute;left:0;top:0;z-index:5;padding:3px 9px;border-radius:8px;
+    font-size:11px;font-weight:800;letter-spacing:.06em;white-space:nowrap;opacity:0;
+    font-family:"SF Mono",ui-monospace,Menlo,monospace;
+    transition:opacity .15s;pointer-events:none;
+  }
+  .chip::after{
+    content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);
+    border:5px solid transparent;border-top-color:currentColor;opacity:.9
+  }
+  .chip.head{background:#111827;color:#fff}
+  .chip.prev{background:#e8edf7;color:#475569}
+  .chip.cur{background:var(--indigo);color:#fff}
+  .chip.cnt{background:#fff4e6;color:#b45309}
+
+  /* ---------- 旁白 ---------- */
+  .narration{
+    display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:11px 14px;
+    background:#f6f8fd;border:1px solid #e6ecf7;border-radius:11px;min-height:44px
+  }
+  .narration .dot{width:7px;height:7px;border-radius:50%;background:var(--indigo);margin-top:6px;flex:none}
+  .narration p{margin:0;font-size:13.5px;line-height:1.55;color:#3c4a63}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;padding:9px 4px 2px;font-size:11.5px;color:#93a0b8}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+
+  /* ---------- 右侧面板 ---------- */
+  .panel{display:flex;flex-direction:column;gap:14px;position:sticky;top:82px}
+  .pcard{padding:15px 16px 16px}
+  .pcard h2{
+    margin:0 0 12px;font-size:12px;letter-spacing:.13em;text-transform:uppercase;
+    color:#8b96ad;font-weight:800;display:flex;align-items:center;gap:7px
+  }
+  .pcard h2 .idx{
+    background:#eef1f8;color:#5a6883;border-radius:5px;padding:1px 6px;font-size:10px;letter-spacing:.04em
+  }
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:11px}
+  .field label{font-size:11.5px;color:#7c89a1;font-weight:700;letter-spacing:.03em}
+  .field input,.field select{
+    font:inherit;font-size:14px;padding:9px 11px;border-radius:9px;border:1.5px solid #dfe6f2;
+    background:#fbfcff;color:var(--ink);outline:none;transition:.16s;width:100%
+  }
+  .field input:focus,.field select:focus{border-color:var(--indigo);background:#fff;box-shadow:0 0 0 3px rgba(75,70,224,.1)}
+  .field input::placeholder{color:#adb8cb}
+
+  .btn{
+    font:inherit;font-size:13px;font-weight:650;border-radius:9px;border:1.5px solid #dfe6f2;
+    background:#fff;color:#33415a;padding:9px 10px;cursor:pointer;transition:.15s;
+    display:flex;align-items:center;justify-content:center;gap:6px
+  }
+  .btn:hover{border-color:#c3cee3;background:#f8faff;transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn:disabled{
+    cursor:not-allowed;transform:none;background:#f5f7fb !important;border-color:#eef1f7 !important;
+    color:#b9c3d4 !important;box-shadow:none
+  }
+  .btn:disabled span{opacity:.7}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;box-shadow:0 4px 12px rgba(75,70,224,.25)}
+  .btn.primary:hover{background:#433ed6;border-color:#433ed6}
+  .btn.danger{color:var(--rose);border-color:#f3cfd7;background:#fff8f9}
+  .btn.danger:hover{background:#fff1f4;border-color:#eeb3c0}
+  .btn.danger:disabled,.btn.primary:disabled{
+    background:#f5f7fb !important;border-color:#eef1f7 !important;color:#b9c3d4 !important;box-shadow:none !important
+  }
+  .btn.mini{font-size:12px;padding:7px 9px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .speed{display:flex;gap:5px;background:#f1f4fa;border-radius:9px;padding:3px}
+  .speed button{
+    flex:1;font:inherit;font-size:11.5px;padding:6px;border:0;border-radius:6px;
+    background:transparent;color:#7c89a1;cursor:pointer;font-weight:650
+  }
+  .speed button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(13,21,38,.12)}
+
+  /* 关卡片 */
+  .level-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .level-no{
+    font-size:11px;font-weight:800;background:var(--indigo);color:#fff;border-radius:6px;
+    padding:2px 7px;letter-spacing:.06em
+  }
+  .level-name{font-size:15px;font-weight:800}
+  .level-desc{font-size:13px;line-height:1.6;color:#3c4a63;margin:0 0 10px}
+  .goal{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:9px 11px;background:#f6f9ff;border:1px dashed #d8e2f5;border-radius:9px;margin-bottom:10px}
+  .goal .lbl{font-size:10.5px;color:#93a0b8;font-weight:800;letter-spacing:.08em}
+  .goal .val{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;color:#2b3a55}
+  .goal .val .arrow{color:#b6c2d6;margin:0 7px;font-weight:400}
+  details.hint{border-top:1px solid #eef2fa;padding-top:9px;margin-top:2px}
+  details.hint summary{font-size:12px;color:var(--indigo);cursor:pointer;font-weight:700;list-style:none;display:flex;align-items:center;gap:6px}
+  details.hint summary::-webkit-details-marker{display:none}
+  details.hint summary::before{content:"？";width:16px;height:16px;border-radius:50%;background:var(--indigo-soft);color:var(--indigo);font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800}
+  details.hint p{margin:8px 0 0;font-size:12.5px;line-height:1.6;color:#5a6883;background:#f8faff;padding:9px 11px;border-radius:8px}
+  .dots{display:flex;gap:5px;margin-top:12px}
+  .dots i{flex:1;height:5px;border-radius:3px;background:#e6ebf5}
+  .dots i.done{background:#a5b4fc}
+  .dots i.cur{background:var(--indigo)}
+
+  /* 测题 */
+  .quiz-q{font-size:14px;line-height:1.6;color:#26334a;margin:0 0 12px;font-weight:650}
+  .quiz-opt{
+    display:block;width:100%;text-align:left;font:inherit;font-size:13.5px;padding:10px 12px;
+    border:1.5px solid #e2e8f3;background:#fff;border-radius:9px;cursor:pointer;margin-bottom:7px;
+    transition:.15s;color:#33415a
+  }
+  .quiz-opt:hover{border-color:#c3cee3;background:#f9fbff}
+  .quiz-opt.right{border-color:#10b981;background:#effcf6;color:#047857;font-weight:700}
+  .quiz-opt.wrong{border-color:#f43f5e;background:#fff1f4;color:#be123c}
+  .quiz-opt:disabled{cursor:default}
+
+  /* 检查器 */
+  .inspector{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9;color:#4a5a76}
+  .inspector .k{color:#93a0b8}
+  .inspector .v{color:var(--ink);font-weight:700}
+  .inspector .arrow{color:var(--indigo);font-weight:800}
+  .inspector .empty{color:#adb8cb;font-family:inherit;font-size:12.5px}
+
+  /* 通关横幅 */
+  .win{
+    position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    background:rgba(247,249,253,.82);backdrop-filter:blur(4px);border-radius:14px;
+    opacity:0;pointer-events:none;transition:opacity .25s
+  }
+  .win.show{opacity:1;pointer-events:auto}
+  .win-card{
+    width:min(440px,88%);background:#fff;border-radius:16px;padding:22px 24px;
+    box-shadow:0 24px 60px rgba(13,21,38,.22);border:1px solid #e6ebf6;
+    transform:translateY(8px) scale(.97);transition:.28s cubic-bezier(.2,.9,.3,1.2)
+  }
+  .win.show .win-card{transform:none}
+  .win-badge{font-size:11px;font-weight:800;letter-spacing:.1em;color:#047857;background:#e8f8f1;padding:3px 9px;border-radius:6px;display:inline-block}
+  .win-card h3{margin:10px 0 6px;font-size:19px}
+  .win-card p{margin:0 0 16px;font-size:13.5px;line-height:1.65;color:#4a5a76}
+  .win-actions{display:flex;gap:8px}
+  .win-actions .btn{flex:1}
+
+  /* 底部要点 */
+  .crib{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+    max-width:1560px;margin:0 auto;padding:0 24px 44px;
+  }
+  .crib div{
+    background:rgba(255,255,255,.62);border:1px solid rgba(13,21,38,.07);border-radius:12px;
+    padding:12px 15px;font-size:12.5px;line-height:1.65;color:#5a6883
+  }
+  .crib b{display:block;font-size:12.5px;color:#26334a;margin-bottom:2px;letter-spacing:.01em}
+
+  @media (max-width:1080px){
+    .app{grid-template-columns:1fr;padding:14px}
+    .panel{position:static}
+    .board{height:282px}
+    .brand .sub{display:none}
+    .crib{grid-template-columns:1fr;padding:0 14px 30px}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>链表交互实验室</h1>
+    <span class="deco">单链表</span>
+    <span class="sub">Linked List Lab</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="seg" id="modeTabs">
+    <button data-mode="free" class="on">自由探索</button>
+    <button data-mode="challenge">闯关练习</button>
+  </div>
+  <div class="viewsw">
+    <span>节点数据</span>
+    <div class="switch" id="viewSwitch">
+      <button data-view="num" class="on">数字</button>
+      <button data-view="order">订单</button>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <!-- ============ 舞台 ============ -->
+  <section class="card stage">
+    <div class="stage-head">
+      <div class="stage-title">内存视图<span>head 是唯一入口，None 表示结束</span></div>
+      <div class="metrics">
+        <div class="metric">长度 <b id="lenVal">0</b></div>
+        <div class="metric" id="stepMetric">本次访问 <b id="stepVal">—</b> 步</div>
+      </div>
+    </div>
+
+    <div class="board-wrap" id="boardWrap">
+      <div class="scroll-hint" id="scrollHint">横向滚动看完整条链 →</div>
+      <div class="board" id="board">
+        <svg id="edges">
+          <defs>
+            <marker id="ar-gray" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,1 L9,5 L0,9 z" fill="#a3b0c7"/>
+            </marker>
+            <marker id="ar-indigo" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,1 L9,5 L0,9 z" fill="#4b46e0"/>
+            </marker>
+            <marker id="ar-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,1 L9,5 L0,9 z" fill="#10b981"/>
+            </marker>
+          </defs>
+        </svg>
+        <div class="chip head" id="chipHead">head</div>
+        <div class="chip prev" id="chipPrev">prev</div>
+        <div class="chip cur" id="chipCur">cur</div>
+        <div class="none-badge" id="noneBadge">None</div>
+        <div class="empty-hint" id="emptyHint">
+          <b>空链表</b>
+          <code>head = None</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="narration">
+      <span class="dot"></span>
+      <p id="narration">欢迎。点右侧「尾插」把第一个节点挂到 head 上，或者切到「闯关练习」从第 1 关开始。</p>
+    </div>
+    <div class="legend">
+      <span><i style="background:#111827"></i>head 入口指针</span>
+      <span><i style="background:#4b46e0"></i>cur 当前节点</span>
+      <span><i style="background:#cbd5e1"></i>prev 前驱节点</span>
+      <span>点击节点可选中它</span>
+    </div>
+
+    <div class="win" id="winOverlay">
+      <div class="win-card">
+        <span class="win-badge" id="winBadge">关卡通过</span>
+        <h3 id="winTitle">漂亮！</h3>
+        <p id="winText"></p>
+        <div class="win-actions">
+          <button class="btn mini" id="winRetry">重玩本关</button>
+          <button class="btn primary" id="winNext">下一关 →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 右侧面板 ============ -->
+  <aside class="panel">
+    <section class="card pcard" id="levelCard" hidden>
+      <h2>关卡 <span class="idx" id="levelIdx">1 / 7</span></h2>
+      <div class="level-head">
+        <span class="level-no" id="levelNo">LEVEL 1</span>
+        <span class="level-name" id="levelName">从空到有</span>
+      </div>
+      <p class="level-desc" id="levelDesc"></p>
+      <div class="goal" id="goalBox"></div>
+      <details class="hint">
+        <summary>卡住了？看提示</summary>
+        <p id="levelHint"></p>
+      </details>
+      <div class="dots" id="dots"></div>
+    </section>
+
+    <section class="card pcard" id="opsCard">
+      <h2>操作台</h2>
+      <div class="field" id="valueField">
+        <label id="valueLabel">节点数据</label>
+        <input id="valueInput" class="mono" placeholder="输入数字，如 40" autocomplete="off">
+      </div>
+      <div class="field" id="statusField" hidden>
+        <label>订单状态</label>
+        <select id="statusSelect">
+          <option value="正常推进">正常推进</option>
+          <option value="待拣货">待拣货</option>
+          <option value="缺货暂停">缺货暂停</option>
+          <option value="已完成">已完成</option>
+        </select>
+      </div>
+
+      <div class="grid2" style="margin-bottom:8px">
+        <button class="btn" data-op="prepend">头插 <span style="opacity:.5">O(1)</span></button>
+        <button class="btn" data-op="append">尾插 <span style="opacity:.5">O(n)</span></button>
+      </div>
+      <button class="btn" data-op="insertAfter" style="width:100%;margin-bottom:8px">在选中节点后插入</button>
+      <div class="grid3" style="margin-bottom:8px">
+        <button class="btn mini" data-op="search">查找</button>
+        <button class="btn mini" data-op="remove">删除</button>
+        <button class="btn mini" data-op="size">求长度</button>
+      </div>
+      <div class="grid2">
+        <button class="btn mini danger" data-op="clear">清空链表</button>
+        <button class="btn mini" id="undoBtn">撤销一步</button>
+      </div>
+      <button class="btn mini danger" id="purgeBtn" hidden style="width:100%;margin-top:8px">删除所有「缺货暂停」订单</button>
+
+      <div style="margin-top:12px">
+        <div style="font-size:11.5px;color:#7c89a1;font-weight:700;margin-bottom:6px">动画速度</div>
+        <div class="speed" id="speedCtl">
+          <button data-speed="0.55">慢</button>
+          <button data-speed="1" class="on">标准</button>
+          <button data-speed="1.9">快</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card pcard" id="quizCard" hidden>
+      <h2>选择答案</h2>
+      <p class="quiz-q" id="quizQ"></p>
+      <div id="quizOptions"></div>
+    </section>
+
+    <section class="card pcard">
+      <h2>指针检查器</h2>
+      <div class="inspector" id="inspector">
+        <div class="empty">把鼠标移到某个节点上，查看它的 data 与 next。</div>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<footer class="crib">
+  <div><b>① 只能顺序访问</b>要找第 k 个节点，必须从 head 走 k 步：O(n)。数组按下标直接取，是 O(1)。</div>
+  <div><b>② 插入删除只改指针</b>节点本身不搬家，改变的是 next 的指向；代价主要在「先找到位置」。</div>
+  <div><b>③ 边界最容易错</b>空链表 head = None；删头节点要单独处理；尾插必须遍历到 None 之前。</div>
+</footer>
+
+<script>
+/* =========================================================
+   常量与状态
+   ========================================================= */
+const NODE_W = 152, NODE_H = 78, GAP = 46, PAD = 52, NODE_Y = 122;
+const board = document.getElementById('board');
+const boardWrap = document.getElementById('boardWrap');
+const scrollHint = document.getElementById('scrollHint');
+const svg   = document.getElementById('edges');
+const noneBadge = document.getElementById('noneBadge');
+const emptyHint = document.getElementById('emptyHint');
+const narrEl = document.getElementById('narration');
+
+const ORDER_META = {
+  OR001: ['战略客户', '拣货环节', '正常推进'],
+  OR002: ['普通客户', '待拣货',   '缺货暂停'],
+  OR003: ['战略客户', '复核环节', '正常推进'],
+  OR004: ['普通客户', '待拣货',   '正常推进'],
+  OR005: ['普通客户', '发货环节', '已完成'],
+  OR006: ['战略客户', '拣货环节', '正常推进'],
+};
+const ORDER_STATUS = {};
+for (const k in ORDER_META) ORDER_STATUS[k] = ORDER_META[k][2];
+
+const state = {
+  nodes: [],            // {id, value, x, y, op, el}
+  seq: 0,
+  view: 'num',          // num | order
+  mode: 'free',         // free | challenge
+  busy: false,
+  speed: 1,
+  selected: null,
+  steps: null,
+  history: [],
+  level: 0,
+  chips: { head: null, prev: null, cur: null },
+  quizLocked: false,
+};
+
+const byId = id => state.nodes.find(n => n.id === id);
+
+/* =========================================================
+   数据模型 <-> DOM
+   ========================================================= */
+function makeNode(value){
+  const n = { id: ++state.seq, value, x: PAD, y: NODE_Y, op: 0 };
+  const el = document.createElement('div');
+  el.className = 'node';
+  el.dataset.id = n.id;
+  el.innerHTML =
+    '<div class="node-data">' +
+      '<div class="node-code mono"></div>' +
+      '<div class="node-meta"></div>' +
+    '</div>' +
+    '<div class="node-port"></div>';
+  el.addEventListener('click', () => onNodeClick(n));
+  el.addEventListener('mouseenter', () => inspect(n));
+  el.addEventListener('mouseleave', () => inspect(state.selected ? byId(state.selected) : null));
+  n.el = el;
+  paint(n);
+  return n;
+}
+
+function paint(n){
+  const code = n.el.querySelector('.node-code');
+  const meta = n.el.querySelector('.node-meta');
+  if (state.view === 'order'){
+    const st = ORDER_STATUS[n.value] || '正常推进';
+    code.textContent = n.value;
+    meta.textContent = st;
+    meta.className = 'node-meta pill ' + statusClass(st);
+  } else {
+    code.textContent = n.value;
+    const i = state.nodes.indexOf(n);
+    meta.textContent = i >= 0 ? '第 ' + (i + 1) + ' 个' : 'data';
+    meta.className = 'node-meta';
+  }
+}
+
+function statusClass(st){
+  if (st === '正常推进') return 'ok';
+  if (st === '缺货暂停') return 'pause';
+  if (st === '已完成') return 'done';
+  return '';
+}
+
+function repaintAll(){
+  state.nodes.forEach(paint);
+  const len = state.nodes.length;
+  document.getElementById('lenVal').textContent = len;
+  emptyHint.style.display = len ? 'none' : 'flex';
+  document.getElementById('undoBtn').disabled = state.history.length === 0;
+}
+
+/* =========================================================
+   绘制：节点位置、箭头、指针标签
+   ========================================================= */
+let edges = [];   // 复用 path 元素
+
+function totalWidth(){
+  const n = state.nodes.length;
+  return PAD * 2 + n * NODE_W + Math.max(0, n - 1) * GAP + 130;
+}
+
+function draw(){
+  board.style.width = Math.max(totalWidth(), board.parentElement.clientWidth) + 'px';
+
+  for (const n of state.nodes){
+    n.el.style.transform = 'translate3d(' + n.x + 'px,' + n.y + 'px,0) scale(' + (0.86 + 0.14 * n.op) + ')';
+    n.el.style.opacity = n.op;
+  }
+
+  const count = state.nodes.length;
+  // 补齐 path 元素
+  while (edges.length < count){
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('fill', 'none');
+    p.setAttribute('stroke', '#a3b0c7');
+    p.setAttribute('stroke-width', '2.4');
+    p.setAttribute('marker-end', 'url(#ar-gray)');
+    p.style.transition = 'stroke .2s';
+    svg.appendChild(p);
+    edges.push(p);
+  }
+  while (edges.length > count){
+    edges.pop().remove();
+  }
+
+  if (count === 0){
+    noneBadge.style.display = 'none';
+  } else {
+    noneBadge.style.display = 'flex';
+    const last = state.nodes[count - 1];
+    const nbX = last.x + NODE_W + 52;
+    const nbY = last.y + NODE_H / 2 - 22;
+    noneBadge.style.transform = 'translate3d(' + nbX + 'px,' + nbY + 'px,0)';
+    noneBadge.style.opacity = last.op;
+    noneBadge.dataset.x = nbX;
+  }
+
+  for (let i = 0; i < count; i++){
+    const n = state.nodes[i];
+    const nxt = state.nodes[i + 1];
+    const x1 = n.x + NODE_W - 6;
+    const y1 = n.y + NODE_H / 2;
+    let x2, y2;
+    if (nxt){ x2 = nxt.x - 2; y2 = nxt.y + NODE_H / 2; }
+    else { x2 = n.x + NODE_W + 52; y2 = y1; }
+    const c = Math.max(18, Math.abs(x2 - x1) * 0.45);
+    edges[i].setAttribute('d',
+      'M ' + x1 + ' ' + y1 + ' C ' + (x1 + c) + ' ' + y1 + ', ' + (x2 - c) + ' ' + y2 + ', ' + x2 + ' ' + y2);
+    edges[i].style.opacity = Math.min(n.op, nxt ? nxt.op : 1);
+  }
+
+  paintChips();
+  if (!draw._t){
+    draw._t = requestAnimationFrame(() => { draw._t = null; updateScrollHint(); });
+  }
+}
+
+function updateScrollHint(){
+  const more = boardWrap.scrollWidth - boardWrap.clientWidth > 4 &&
+    boardWrap.scrollLeft + boardWrap.clientWidth < boardWrap.scrollWidth - 10;
+  scrollHint.style.opacity = more ? '1' : '0';
+}
+boardWrap.addEventListener('scroll', updateScrollHint);
+
+function paintChips(){
+  const groups = new Map();
+  const put = (el, id) => {
+    if (id == null){ el.style.opacity = 0; return; }
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id).push(el);
+  };
+  put(document.getElementById('chipHead'), state.chips.head);
+  put(document.getElementById('chipPrev'), state.chips.prev);
+  put(document.getElementById('chipCur'),  state.chips.cur);
+
+  for (const [id, els] of groups){
+    const n = byId(id);
+    if (!n) { els.forEach(e => e.style.opacity = 0); continue; }
+    els.forEach((el, k) => {
+      el.style.opacity = 1;
+      el.style.transform =
+        'translate3d(' + (n.x + NODE_W / 2) + 'px,' + (n.y - 26 - k * 30) + 'px,0) translateX(-50%)';
+    });
+  }
+}
+
+/* =========================================================
+   动画工具
+   ========================================================= */
+const wait = ms => new Promise(r => setTimeout(r, ms / state.speed));
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+
+function tween(dur){
+  const start = state.nodes.map(n => ({ x: n.x, y: n.y, op: n.op }));
+  const target = state.nodes.map((n, i) => ({ x: PAD + i * (NODE_W + GAP), y: NODE_Y }));
+  return new Promise(res => {
+    const t0 = performance.now();
+    const d = Math.max(1, dur / state.speed);
+    (function frame(t){
+      const p = Math.min(1, (t - t0) / d), e = easeOut(p);
+      state.nodes.forEach((n, i) => {
+        n.x = start[i].x + (target[i].x - start[i].x) * e;
+        n.y = start[i].y + (target[i].y - start[i].y) * e;
+        n.op = start[i].op + (1 - start[i].op) * e;
+      });
+      draw();
+      if (p < 1) requestAnimationFrame(frame);
+      else res();
+    })(performance.now());
+  });
+}
+
+function narrate(text, tone){
+  narrEl.textContent = text;
+  narrEl.style.color = tone === 'bad' ? '#be123c' : tone === 'good' ? '#047857' : '#3c4a63';
+  narrEl.animate(
+    [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
+    { duration: 220, easing: 'ease-out' }
+  );
+}
+
+function setSteps(n){
+  state.steps = n;
+  document.getElementById('stepVal').textContent = n == null ? '—' : n;
+  document.getElementById('stepMetric').classList.toggle('hot', n != null);
+}
+
+function pulse(n){
+  n.el.classList.remove('pulse');
+  void n.el.offsetWidth;
+  n.el.classList.add('pulse');
+  setTimeout(() => n.el.classList.remove('pulse'), 420);
+}
+
+function flashEdge(i){
+  const p = edges[i];
+  if (!p) return;
+  p.setAttribute('stroke', '#4b46e0');
+  p.setAttribute('marker-end', 'url(#ar-indigo)');
+  p.setAttribute('stroke-width', '3.4');
+  setTimeout(() => {
+    p.setAttribute('stroke', '#a3b0c7');
+    p.setAttribute('marker-end', 'url(#ar-gray)');
+    p.setAttribute('stroke-width', '2.4');
+  }, 900);
+}
+
+/* =========================================================
+   快照 / 撤销
+   ========================================================= */
+function snapshot(){
+  state.history.push(state.nodes.map(n => n.value));
+  if (state.history.length > 40) state.history.shift();
+  document.getElementById('undoBtn').disabled = false;
+}
+
+function undo(){
+  if (state.busy || !state.history.length) return;
+  const vals = state.history.pop();
+  setList(vals, false);
+  state.chips = { head: vals.length ? state.nodes[0].id : null, prev: null, cur: null };
+  narrate('已撤销到上一步：链表恢复到 ' + (vals.length ? vals.join(' → ') : '空链表') + '。');
+  setSteps(null);
+  draw();
+  document.getElementById('undoBtn').disabled = state.history.length === 0;
+}
+
+/* =========================================================
+   载入 / 重置
+   ========================================================= */
+function setList(values, animate){
+  for (const n of state.nodes) n.el.remove();
+  state.nodes = [];
+  state.selected = null;
+  state.chips = { head: null, prev: null, cur: null };
+  values.forEach((v, i) => {
+    const n = makeNode(v);
+    n.x = PAD + i * (NODE_W + GAP);
+    n.y = NODE_Y + (animate ? 18 : 0);
+    n.op = 0;
+    board.appendChild(n.el);
+    state.nodes.push(n);
+  });
+  repaintAll();
+  draw();
+  boardWrap.scrollLeft = 0;
+  if (animate) return tween(420);
+  state.nodes.forEach(n => { n.op = 1; });
+  draw();
+  return Promise.resolve();
+}
+
+function scrollToEnd(){
+  boardWrap.scrollTo({ left: boardWrap.scrollWidth, behavior: 'smooth' });
+}
+
+function defaults(){
+  if (state.view === 'order') return Object.keys(ORDER_META);
+  return [10, 20, 30];
+}
+
+function resetFree(){
+  state.history = [];
+  setList(defaults(), false);
+  state.chips.head = state.nodes[0] ? state.nodes[0].id : null;
+  setSteps(null);
+  draw();
+  narrate(state.view === 'order'
+    ? '订单视图：节点里放的是 OR00x 订单，注意「缺货暂停」的订单可以整批摘下来。'
+    : '数字视图：先试试尾插 40，再试试头插 5，比较两者的动画长度。');
+}
+
+/* =========================================================
+   基础操作（动画）
+   ========================================================= */
+function guardAllowed(op){
+  if (state.mode !== 'challenge') return true;
+  const lv = LEVELS[state.level];
+  if (lv.kind === 'quiz') { narrate('先把上面的选择题答完，再动手操作。'); return false; }
+  if (!lv.allowed.includes(op)){
+    narrate('这一关还不能用「' + opName(op) + '」，试试：' + lv.allowed.map(opName).join('、') + '。', 'bad');
+    return false;
+  }
+  return true;
+}
+
+function opName(op){
+  return { prepend: '头插', append: '尾插', insertAfter: '在选中后插入', search: '查找',
+           remove: '删除', size: '求长度', clear: '清空' }[op] || op;
+}
+
+function begin(isMutation){
+  if (state.busy) return false;
+  if (!guardAllowed(state._pendingOp)) return false;
+  state.busy = true;
+  if (isMutation !== false) snapshot();
+  document.querySelectorAll('.btn[data-op]').forEach(b => b.disabled = true);
+  return true;
+}
+
+function end(){
+  state.busy = false;
+  syncOpButtons();
+  repaintAll();
+}
+
+async function ensureHeadChip(){
+  state.chips.head = state.nodes.length ? state.nodes[0].id : null;
+  draw();
+}
+
+/* ---- 头插 ---- */
+async function opPrepend(value){
+  state._pendingOp = 'prepend';
+  if (!begin()) return;
+  try {
+    const n = makeNode(value);
+    n.x = PAD + 18; n.y = NODE_Y - 10; n.op = 0;
+    state.nodes.unshift(n);
+    board.appendChild(n.el);
+    state.chips.head = n.id;
+    narrate('头插：新节点成为新的 head，原来的 head 退到第二位。');
+    repaintAll();
+    await tween(430);
+    boardWrap.scrollTo({ left: 0, behavior: 'smooth' });
+    flashEdge(0);
+    pulse(n);
+    narrate('new.next = head；head = new。全程没有遍历，代价 O(1)。', 'good');
+    setSteps(0);
+    afterOp();
+  } finally { end(); }
+}
+
+/* ---- 尾插 ---- */
+async function opAppend(value){
+  state._pendingOp = 'append';
+  if (!begin()) return;
+  try {
+    if (!state.nodes.length){
+      narrate('空链表：head 是 None，新节点直接挂上去成为 head。');
+      const n = makeNode(value);
+      n.x = PAD - 14; n.y = NODE_Y; n.op = 0;
+      state.nodes.push(n);
+      board.appendChild(n.el);
+      state.chips.head = n.id;
+      repaintAll();
+      await tween(380);
+      scrollToEnd();
+      pulse(n);
+      setSteps(0);
+      narrate('现在 head 指向这个节点，它的 next 是 None——链表就建起来了。', 'good');
+      afterOp();
+      return;
+    }
+    await ensureHeadChip();
+    narrate('尾插要从 head 一路走到最后一个节点，先看看要走几步……');
+    let visited = 0;
+    for (let i = 0; i < state.nodes.length; i++){
+      const cur = state.nodes[i];
+      state.chips.cur = cur.id;
+      pulse(cur);
+      visited++;
+      draw();
+      await wait(300);
+    }
+    narrate('cur.next 是 None，说明 cur 就是末尾。执行 cur.next = 新节点。');
+    const n = makeNode(value);
+    n.x = state.nodes[state.nodes.length - 1].x + 34;
+    n.y = NODE_Y; n.op = 0;
+    state.nodes.push(n);
+    board.appendChild(n.el);
+    state.chips.cur = null;
+    repaintAll();
+    await tween(440);
+    scrollToEnd();
+    flashEdge(state.nodes.length - 2);
+    pulse(n);
+    setSteps(visited);
+    narrate('尾插完成：访问了 ' + visited + ' 个节点，代价 O(n)——这是尾插的短板。', 'good');
+    afterOp();
+  } finally { end(); }
+}
+
+/* ---- 在选中节点后插入 ---- */
+async function opInsertAfter(value){
+  state._pendingOp = 'insertAfter';
+  const idx = state.nodes.findIndex(n => n.id === state.selected);
+  if (idx < 0){
+    narrate('先点一下某个节点，把它选中，再插入。', 'bad');
+    return;
+  }
+  if (!begin()) return;
+  try {
+    await ensureHeadChip();
+    state.chips.cur = state.nodes[idx].id;
+    pulse(state.nodes[idx]);
+    narrate('cur 就是选中的节点。新节点要插到 cur 和 cur.next 之间。');
+    await wait(420);
+
+    const n = makeNode(value);
+    n.x = state.nodes[idx].x + 40;
+    n.y = NODE_Y + 14; n.op = 0;
+    state.nodes.splice(idx + 1, 0, n);
+    board.appendChild(n.el);
+    repaintAll();
+    await tween(450);
+    flashEdge(idx);
+    pulse(n);
+    state.chips.cur = null;
+    narrate('两步走：新节点.next = cur.next（先接上后半段），再 cur.next = 新节点。顺序反了会丢掉链尾。', 'good');
+    setSteps(0);
+    afterOp();
+  } finally { end(); }
+}
+
+/* ---- 查找 ---- */
+async function opSearch(value){
+  state._pendingOp = 'search';
+  if (!begin(false)) return;
+  let visited = 0;
+  try {
+    await ensureHeadChip();
+    narrate('查找必须从 head 开始，一个一个比对。');
+    await wait(260);
+    let hit = null;
+    for (let i = 0; i < state.nodes.length; i++){
+      const cur = state.nodes[i];
+      state.chips.cur = cur.id;
+      pulse(cur);
+      visited++;
+      setSteps(visited);
+      draw();
+      await wait(420);
+      if (String(cur.value) === String(value)){ hit = cur; break; }
+    }
+    state.chips.cur = null;
+    state.chips.prev = null;
+    if (hit){
+      hit.el.classList.add('found');
+      narrate('找到了：' + value + ' 在第 ' + visited + ' 个位置，本次比较了 ' + visited + ' 次。', 'good');
+      setTimeout(() => hit.el.classList.remove('found'), 1400);
+    } else {
+      const nb = noneBadge;
+      nb.style.borderColor = '#f43f5e';
+      setTimeout(() => nb.style.borderColor = '#c3cddf', 1200);
+      narrate('走到 None 也没匹配上：链表里没有 ' + value + '，一共比较了 ' + visited + ' 次。', 'bad');
+    }
+    draw();
+    afterOp();
+  } finally { end(); }
+}
+
+/* ---- 删除 ---- */
+async function opRemove(value){
+  state._pendingOp = 'remove';
+  if (!begin()) return;
+  let visited = 0;
+  try {
+    await ensureHeadChip();
+    narrate('删除要先找到目标，而且要同时记住前驱 prev。');
+    await wait(260);
+    let found = -1, prev = null;
+    for (let i = 0; i < state.nodes.length; i++){
+      const cur = state.nodes[i];
+      state.chips.prev = prev ? prev.id : null;
+      state.chips.cur = cur.id;
+      pulse(cur);
+      visited++;
+      setSteps(visited);
+      draw();
+      await wait(400);
+      if (String(cur.value) === String(value)){ found = i; break; }
+      prev = cur;
+    }
+    if (found < 0){
+      state.chips.cur = state.chips.prev = null;
+      draw();
+      narrate('走完了整条链也没找到 ' + value + '，删除失败（返回 False）。', 'bad');
+      afterOp();
+      return;
+    }
+    if (found === 0){
+      narrate('cur 就是头节点，没有 prev：只需 head = head.next。');
+      await wait(520);
+    } else {
+      narrate('prev.next = cur.next：把 cur 从链上摘下来，前后就接上了。');
+      await wait(620);
+    }
+
+    const victim = state.nodes[found];
+    state.nodes.splice(found, 1);
+    victim.el.style.transition = 'opacity .38s ease, filter .38s ease';
+    victim.el.style.opacity = '0';
+    victim.el.style.filter = 'blur(2px)';
+    setTimeout(() => victim.el.remove(), 420);
+    state.chips.cur = state.chips.prev = null;
+    state.chips.head = state.nodes.length ? state.nodes[0].id : null;
+    repaintAll();
+    await tween(400);
+    if (found > 0 && edges[found - 1]) flashEdge(found - 1);
+    setSteps(visited);
+    narrate('删除完成。注意：cur 的 next 不需要清零，被摘下的节点已经被链表遗忘。', 'good');
+    afterOp();
+  } finally { end(); }
+}
+
+/* ---- 求长度 ---- */
+async function opSize(){
+  state._pendingOp = 'size';
+  if (!begin(false)) return;
+  try {
+    await ensureHeadChip();
+    let visited = 0;
+    narrate('求长度没有捷径：只能从头数到尾。');
+    for (let i = 0; i < state.nodes.length; i++){
+      const cur = state.nodes[i];
+      state.chips.cur = cur.id;
+      pulse(cur);
+      visited++;
+      setSteps(visited);
+      draw();
+      await wait(330);
+    }
+    state.chips.cur = null;
+    draw();
+    narrate('长度 = ' + visited + '。整个过程访问了 ' + visited + ' 个节点，复杂度 O(n)；数组求长度是 O(1)。', 'good');
+    afterOp();
+  } finally { end(); }
+}
+
+/* ---- 清空 ---- */
+async function opClear(){
+  state._pendingOp = 'clear';
+  if (!begin()) return;
+  try {
+    narrate('清空链表 = 让 head 变成 None，剩下的节点会失去引用、被回收。');
+    await wait(500);
+    const olds = state.nodes.slice();
+    state.nodes = [];
+    state.chips = { head: null, prev: null, cur: null };
+    olds.forEach((n, i) => {
+      n.el.style.transition = 'opacity .32s ease, filter .32s ease';
+      n.el.style.transitionDelay = (i * 45) + 'ms';
+      n.el.style.opacity = '0';
+      n.el.style.filter = 'blur(3px)';
+      setTimeout(() => n.el.remove(), 400 + i * 45);
+    });
+    repaintAll();
+    draw();
+    await wait(360);
+    narrate('head = None 时就是空链表，这也是所有遍历的终止条件。', 'good');
+    setSteps(0);
+    afterOp();
+  } finally { end(); }
+}
+
+/* ---- 订单视图：按状态批量删除 ---- */
+async function opPurge(){
+  if (state.busy) return;
+  const targets = state.nodes.filter(n => (ORDER_STATUS[n.value] || '正常推进') === '缺货暂停');
+  if (!targets.length){ narrate('当前没有「缺货暂停」的订单。', 'bad'); return; }
+  state.busy = true;
+  snapshot();
+  document.querySelectorAll('.btn[data-op]').forEach(b => b.disabled = true);
+  try {
+    const ids = new Set(targets.map(n => n.id));
+    narrate('要把所有「缺货暂停」的订单摘掉，需要边走边删——删掉后 cur 不能动，否则会跳过后一个节点。');
+    await wait(700);
+    state.chips.head = state.nodes.length ? state.nodes[0].id : null;
+    for (const n of targets){
+      n.el.style.transition = 'opacity .35s, filter .35s';
+      n.el.style.opacity = '0';
+      n.el.style.filter = 'blur(2px)';
+      await wait(200);
+    }
+    setTimeout(() => targets.forEach(n => n.el.remove()), 400);
+    state.nodes = state.nodes.filter(n => !ids.has(n.id));
+    state.selected = null;
+    if (state.nodes.length) state.chips.head = state.nodes[0].id;
+    repaintAll();
+    await tween(460);
+    narrate('批量删除完成：共移除 ' + targets.length + ' 条，head 指向剩余的第一个订单。', 'good');
+    afterOp();
+  } finally { end(); }
+}
+
+/* =========================================================
+   关卡系统
+   ========================================================= */
+const LEVELS = [
+  {
+    kind: 'op', name: '从空到有',
+    desc: '空链表里依次尾插 10、20、30，把链建起来。',
+    start: [], goal: [10, 20, 30], allowed: ['append'],
+    hint: '尾插：从 head 走到最后一个节点，再让它的 next 指向新节点。第一个节点是特例。',
+    lesson: '空链表时 head = None。第一个节点直接挂到 head 上——这是很多 bug 的来源。'
+  },
+  {
+    kind: 'op', name: '头插',
+    desc: '在 10 → 20 → 30 的最前面插入 5。',
+    start: [10, 20, 30], goal: [5, 10, 20, 30], allowed: ['prepend'],
+    hint: '新节点的 next 指向原来的 head，再把 head 改成新节点。',
+    lesson: '头插不用遍历，代价 O(1)。这正是链表在「频繁头部插入」时优于数组的地方。'
+  },
+  {
+    kind: 'op', name: '中间插入',
+    desc: '先点选节点 20，再在它后面插入 25。',
+    start: [10, 20, 30], goal: [10, 20, 25, 30], allowed: ['insertAfter'],
+    hint: '点击节点 20 选中它，输入 25，点「在选中节点后插入」。',
+    lesson: '插入要改两条指针：新节点.next = cur.next，再 cur.next = 新节点。顺序反了会丢掉后半段。'
+  },
+  {
+    kind: 'op', name: '删除中间节点',
+    desc: '删除节点 20，得到 10 → 25 → 30。',
+    start: [10, 20, 25, 30], goal: [10, 25, 30], allowed: ['remove'],
+    hint: 'prev 和 cur 一起走；找到 cur 后执行 prev.next = cur.next。',
+    lesson: '单链表删除必须知道前驱 prev，所以查找和删除总是绑在一起：O(n)。'
+  },
+  {
+    kind: 'op', name: '删除头节点',
+    desc: '删除 10，注意观察 head 指针怎么移动。',
+    start: [10, 25, 30], goal: [25, 30], allowed: ['remove'],
+    hint: '头节点没有 prev，直接 head = head.next。',
+    lesson: '头节点是特例：head = head.next 即可，不需要 prev。写删除一定要单独处理它。'
+  },
+  {
+    kind: 'quiz', name: '数一数访问次数',
+    q: '在 10 → 25 → 30 里查找 30，一共要比较几个节点？',
+    start: [10, 25, 30], options: ['1 个', '2 个', '3 个', '4 个'], answer: '3 个',
+    lesson: '查找只能从 head 开始逐个比较，最坏要走完整条链：O(n)。'
+  },
+  {
+    kind: 'quiz', name: '空链表',
+    q: '把 10 → 25 → 30 全部删掉之后，head 的值是什么？',
+    start: [10, 25, 30], options: ['0', 'None', '空字符串', '程序报错'], answer: 'None',
+    lesson: '空链表就是 head = None。所有遍历在做任何事之前都要先判断 head 是不是 None。'
+  }
+];
+
+function loadLevel(i){
+  state.level = i;
+  const lv = LEVELS[i];
+  state.mode = 'challenge';
+  state.view = 'num';
+  document.querySelectorAll('#viewSwitch button').forEach(b => b.classList.toggle('on', b.dataset.view === 'num'));
+  document.getElementById('statusField').hidden = true;
+  document.getElementById('purgeBtn').hidden = true;
+  document.getElementById('valueLabel').textContent = '节点数据';
+  document.getElementById('valueInput').placeholder = '输入数字，如 40';
+
+  setList(lv.start, true);
+  state.chips.head = state.nodes[0] ? state.nodes[0].id : null;
+  state.history = [];
+  state.quizLocked = false;
+  draw();
+
+  // 关卡信息
+  document.getElementById('levelIdx').textContent = (i + 1) + ' / ' + LEVELS.length;
+  document.getElementById('levelNo').textContent = 'LEVEL ' + (i + 1);
+  document.getElementById('levelName').textContent = lv.name;
+  document.getElementById('levelDesc').textContent = lv.desc || lv.q;
+  document.getElementById('levelHint').textContent = lv.hint || lv.lesson;
+
+  // 目标
+  const goalBox = document.getElementById('goalBox');
+  if (lv.goal){
+    const chain = lv.goal.map(v => '<span>' + v + '</span>').join('<span class="arrow">→</span>');
+    goalBox.innerHTML = '<span class="lbl">目标</span><span class="val">' +
+      (lv.goal.length ? chain : '空链表') + '</span>';
+  } else {
+    goalBox.innerHTML = '<span class="lbl">目标</span><span class="val">答对选择题</span>';
+  }
+
+  // 进度点
+  const dots = document.getElementById('dots');
+  dots.innerHTML = '';
+  LEVELS.forEach((_, k) => {
+    const d = document.createElement('i');
+    if (k < i) d.className = 'done';
+    if (k === i) d.className = 'cur';
+    dots.appendChild(d);
+  });
+
+  // 测题
+  const quizCard = document.getElementById('quizCard');
+  if (lv.kind === 'quiz'){
+    quizCard.hidden = false;
+    document.getElementById('quizQ').textContent = lv.q;
+    const box = document.getElementById('quizOptions');
+    box.innerHTML = '';
+    lv.options.forEach(opt => {
+      const b = document.createElement('button');
+      b.className = 'quiz-opt';
+      b.textContent = opt;
+      b.onclick = () => answerQuiz(opt, lv);
+      box.appendChild(b);
+    });
+    narrate('第 ' + (i + 1) + ' 关：看图回答上面的问题。');
+    document.querySelectorAll('.btn[data-op]').forEach(b => b.disabled = true);
+    document.getElementById('undoBtn').disabled = true;
+  } else {
+    quizCard.hidden = true;
+    narrate('第 ' + (i + 1) + ' 关 · ' + lv.name + '：' + lv.desc);
+    syncOpButtons();
+  }
+
+  document.getElementById('winOverlay').classList.remove('show');
+  setSteps(null);
+}
+
+function answerQuiz(opt, lv){
+  if (state.quizLocked) return;
+  const box = document.getElementById('quizOptions');
+  [...box.children].forEach(b => {
+    b.disabled = true;
+    if (b.textContent === lv.answer) b.classList.add('right');
+    if (b.textContent === opt && opt !== lv.answer) b.classList.add('wrong');
+  });
+  if (opt === lv.answer){
+    state.quizLocked = true;
+    narrate('答对了：' + lv.lesson, 'good');
+    showWin(true);
+  } else {
+    narrate('再想想：查找/遍历都必须从 head 一路走，不能跳。', 'bad');
+  }
+}
+
+function showWin(){
+  const lv = LEVELS[state.level];
+  const last = state.level === LEVELS.length - 1;
+  document.getElementById('winTitle').textContent = last ? '全部通关！' : '第 ' + (state.level + 1) + ' 关通过';
+  document.getElementById('winBadge').textContent = last ? 'ALL CLEAR' : 'LEVEL CLEAR';
+  document.getElementById('winText').textContent = lv.lesson;
+  document.getElementById('winNext').textContent = last ? '回到自由探索 →' : '下一关 →';
+  document.getElementById('winOverlay').classList.add('show');
+  document.querySelectorAll('.btn[data-op]').forEach(b => b.disabled = true);
+  document.querySelectorAll('.dots i')[state.level].className = 'done';
+}
+
+function afterOp(){
+  if (state.mode !== 'challenge') return;
+  const lv = LEVELS[state.level];
+  if (lv.kind !== 'op') return;
+  if (sameList(state.nodes.map(n => n.value), lv.goal)) showWin();
+}
+
+function sameList(a, b){
+  return a.length === b.length && a.every((v, i) => String(v) === String(b[i]));
+}
+
+function syncOpButtons(){
+  document.querySelectorAll('.btn[data-op]').forEach(b => {
+    b.disabled = false;
+    if (state.mode === 'challenge'){
+      const lv = LEVELS[state.level];
+      if (lv.kind === 'quiz') b.disabled = true;
+      else if (!lv.allowed.includes(b.dataset.op)) b.disabled = true;
+    }
+  });
+  const undo = document.getElementById('undoBtn');
+  undo.disabled = !state.history.length || state.busy;
+}
+
+/* =========================================================
+   交互绑定
+   ========================================================= */
+function onNodeClick(n){
+  if (state.busy) return;
+  if (state.selected === n.id){
+    state.selected = null;
+    n.el.classList.remove('sel');
+    narrate('取消选中。');
+  } else {
+    state.selected = n.id;
+    state.nodes.forEach(m => m.el.classList.toggle('sel', m.id === n.id));
+    narrate('已选中节点 ' + n.value + '。现在可以用「在选中节点后插入」。');
+  }
+  inspect(byId(state.selected));
+  draw();
+}
+
+function inspect(n){
+  const box = document.getElementById('inspector');
+  if (!n){
+    box.innerHTML = '<div class="empty">把鼠标移到某个节点上，查看它的 data 与 next。</div>';
+    return;
+  }
+  const i = state.nodes.indexOf(n);
+  const next = state.nodes[i + 1];
+  const extra = state.view === 'order' && ORDER_META[n.value]
+    ? '<div><span class="k">' + ORDER_META[n.value][0] + ' · ' + ORDER_META[n.value][1] + '</span></div>'
+    : '';
+  box.innerHTML =
+    '<div><span class="k">node</span> <span class="v">' + (i + 1) + '</span>' +
+    '<span class="k" style="margin-left:10px">地址</span> <span class="v">0x' +
+      (1040 + i * 16).toString(16).toUpperCase() + '</span></div>' +
+    '<div><span class="k">data =</span> <span class="v">' + n.value + '</span></div>' +
+    '<div><span class="k">next</span> <span class="arrow">→</span> ' +
+      (next ? '<span class="v">' + next.value + '</span>' : '<span class="v">None</span>') + '</div>' +
+    extra;
+}
+
+function readValue(){
+  const input = document.getElementById('valueInput');
+  let v = input.value.trim();
+  if (state.view === 'order'){
+    if (!v) v = 'OR' + String(state.seq + 1).padStart(3, '0');
+    v = v.toUpperCase();
+    const st = document.getElementById('statusSelect').value;
+    ORDER_META[v] = ORDER_META[v] || ['普通客户', '待拣货', st];
+    ORDER_STATUS[v] = st;
+  } else {
+    if (!v) return null;
+  }
+  input.value = '';
+  return v;
+}
+
+function runOp(op){
+  if (state.busy) return;
+  if (!guardAllowed(op)) return;
+  const value = (op === 'prepend' || op === 'append' || op === 'insertAfter' || op === 'search' || op === 'remove')
+    ? readValue() : null;
+  if ((op === 'prepend' || op === 'append' || op === 'insertAfter') && value == null){
+    narrate('先在输入框里填一个值，再点操作。', 'bad');
+    document.getElementById('valueInput').focus();
+    return;
+  }
+  if ((op === 'search' || op === 'remove') && value == null){
+    narrate('要查找/删除哪个值？先填进输入框。', 'bad');
+    document.getElementById('valueInput').focus();
+    return;
+  }
+  ({
+    prepend: opPrepend, append: opAppend, insertAfter: opInsertAfter,
+    search: opSearch, remove: opRemove, size: opSize, clear: opClear
+  })[op](value);
+}
+
+document.querySelectorAll('.btn[data-op]').forEach(b => {
+  b.addEventListener('click', () => runOp(b.dataset.op));
+});
+
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('purgeBtn').addEventListener('click', opPurge);
+
+document.getElementById('valueInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    const lv = state.mode === 'challenge' ? LEVELS[state.level] : null;
+    const op = lv && lv.allowed.includes('append') ? 'append' : 'append';
+    runOp(op);
+  }
+});
+
+document.getElementById('speedCtl').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  state.speed = parseFloat(b.dataset.speed);
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
+});
+
+document.getElementById('modeTabs').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || state.busy) return;
+  const mode = b.dataset.mode;
+  if (mode === state.mode && mode === 'challenge') return;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
+  state.mode = mode;
+  const levelCard = document.getElementById('levelCard');
+  const quizCard = document.getElementById('quizCard');
+  const purgeBtn = document.getElementById('purgeBtn');
+  const statusField = document.getElementById('statusField');
+
+  if (mode === 'free'){
+    levelCard.hidden = true;
+    quizCard.hidden = true;
+    purgeBtn.hidden = state.view !== 'order';
+    statusField.hidden = state.view !== 'order';
+    document.getElementById('winOverlay').classList.remove('show');
+    resetFree();
+    syncOpButtons();
+  } else {
+    levelCard.hidden = false;
+    state.view = 'num';
+    document.querySelectorAll('#viewSwitch button').forEach(x => x.classList.toggle('on', x.dataset.view === 'num'));
+    purgeBtn.hidden = true;
+    statusField.hidden = true;
+    document.getElementById('valueInput').placeholder = '输入数字，如 40';
+    loadLevel(state.level);
+  }
+});
+
+document.getElementById('viewSwitch').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || state.busy) return;
+  if (state.mode === 'challenge'){
+    narrate('闯关里统一用数字，避免干扰。切回「自由探索」再换订单视图。', 'bad');
+    return;
+  }
+  state.view = b.dataset.view;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
+  const isOrder = state.view === 'order';
+  document.getElementById('statusField').hidden = !isOrder;
+  document.getElementById('purgeBtn').hidden = !isOrder;
+  document.getElementById('valueLabel').textContent = isOrder ? '订单编号' : '节点数据';
+  document.getElementById('valueInput').placeholder = isOrder ? 'OR007（留空自动编号）' : '输入数字，如 40';
+  resetFree();
+});
+
+document.getElementById('winNext').addEventListener('click', () => {
+  document.getElementById('winOverlay').classList.remove('show');
+  if (state.level === LEVELS.length - 1){
+    document.querySelector('#modeTabs button[data-mode="free"]').click();
+  } else {
+    loadLevel(state.level + 1);
+  }
+});
+
+document.getElementById('winRetry').addEventListener('click', () => {
+  document.getElementById('winOverlay').classList.remove('show');
+  loadLevel(state.level);
+});
+
+window.addEventListener('resize', draw);
+
+/* =========================================================
+   启动
+   ========================================================= */
+resetFree();
+state.chips.head = state.nodes[0] ? state.nodes[0].id : null;
+draw();
+
+// 支持 #challenge / #order 直接进入对应状态（方便课堂投屏收藏链接）
+if (location.hash.indexOf('challenge') >= 0){
+  document.querySelector('#modeTabs button[data-mode="challenge"]').click();
+} else if (location.hash.indexOf('order') >= 0){
+  document.querySelector('#viewSwitch button[data-view="order"]').click();
+}
+</script>
+</body>
+</html>
